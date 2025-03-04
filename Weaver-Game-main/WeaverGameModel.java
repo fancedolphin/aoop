@@ -54,8 +54,28 @@ public class WeaverGameModel extends Observable {
     public boolean isTargetWord(String word) {
         return word.equals(targetWord);
     }
+    
+    
+    private boolean isValidTransition(String from, String to) {
+        int diffCount = 0;
+        for (int i = 0; i < from.length(); i++) {
+            if (from.charAt(i) != to.charAt(i)) {
+                diffCount++;
+                if (diffCount > 1) return false;
+            }
+        }
+        return diffCount == 1;
+    }
+    public void resetGame(List<String> validWords) {
+        Random rand = new Random();
+        do {
+            this.startWord = validWords.get(rand.nextInt(validWords.size()));
+            this.targetWord = validWords.get(rand.nextInt(validWords.size()));
+        } while (startWord.equals(targetWord)); // 确保起始词不等于目标词
+        
 
-    // Get feedback on the current word (green or gray)
+    }
+        // Get feedback on the current word (green or gray)
     public String getFeedback(String word) {
         StringBuilder feedback = new StringBuilder();
         for (int i = 0; i < word.length(); i++) {
@@ -93,5 +113,10 @@ public class WeaverGameModel extends Observable {
 
     public boolean getRandomWordsFlag() {
         return randomWordsFlag;
+    }
+
+    public List<String> getValidWords() {
+        // 假设 validWords 是从文件或数据库加载的有效词汇列表
+        return validWords;  // 返回有效的词汇列表
     }
 }

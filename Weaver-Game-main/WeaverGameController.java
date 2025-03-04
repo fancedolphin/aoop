@@ -1,4 +1,5 @@
 import java.awt.event.*;
+import java.util.List;
 
 public class WeaverGameController {
     private WeaverGameModel model;
@@ -23,7 +24,10 @@ public class WeaverGameController {
         }
         return "Try again!";
     }
-    
+    public void startNewGame() {
+    List<String> dictionary = model.getValidWords();
+    model.resetGame(dictionary);
+}
     public WeaverGameModel getModel() {
         return this.model;
     }
