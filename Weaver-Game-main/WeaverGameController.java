@@ -10,19 +10,25 @@ public class WeaverGameController {
 
     // Handle user input and update model
     public String processInput(String word) {
-        if (!model.isValidWord(word)) {
-            if (model.getErrorFlag()) {
-                return "Invalid word!";
-            }
-        } else {
-            String feedback = model.getFeedback(word);
-            if (model.isTargetWord(word)) {
-                return "Congratulations! You've reached the target word!";
-            } else {
-                return "Feedback: " + feedback;
-            }
+        if (word == null || word.trim().isEmpty()) {
+            return "Empty input!";
         }
-        return "Try again!";
+        
+        String processedWord = word.toUpperCase().trim();
+        if (processedWord.length() != 4) {
+            return "Invalid word! Must be 4 letters.";
+        }
+        
+        if (!model.isValidWord(processedWord)) {
+            return "Invalid word! Not in dictionary.";
+        }
+        
+        // 后续成功处理逻辑（反馈生成、路径检查等）
+        String feedback = model.getFeedback(processedWord);
+        if (model.isTargetWord(processedWord)) {
+            return "Success! Target reached: " + feedback;
+        }
+        return "Valid transition. Feedback: " + feedback;
     }
     public void startNewGame() {
     List<String> dictionary = model.getValidWords();

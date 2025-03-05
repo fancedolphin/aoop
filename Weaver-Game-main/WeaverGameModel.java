@@ -14,7 +14,7 @@ public class WeaverGameModel extends Observable {
         this.startWord = startWord;
         this.targetWord = targetWord;
         this.validWords = loadDictionary("dictionary.txt"); // 从文件加载字典
-        this.errorFlag = false;
+        this.errorFlag = true;
         this.showPathFlag = false;
         this.randomWordsFlag = false;
     }
@@ -47,7 +47,9 @@ public class WeaverGameModel extends Observable {
 
     // Validate if a word is a valid intermediate word
     public boolean isValidWord(String word) {
-        return validWords.contains(word);
+        return word != null 
+        && word.length() == 4 
+        && validWords.contains(word.toUpperCase().trim());
     }
 
     // Check if the current word is the target word

@@ -1,4 +1,8 @@
 import javax.swing.*;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.PlainDocument;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -23,6 +27,7 @@ public class WeaverGameView extends JFrame {
     private JPanel enteredWordsPanel;
     private JPanel startWordPanel;
     private JPanel targetWordPanel;
+    private JPanel virtualKeyboardPanel;  // Panel for virtual keyboard
 
     public WeaverGameView(WeaverGameController controller) {
         this.controller = controller;
@@ -33,20 +38,19 @@ public class WeaverGameView extends JFrame {
         initialize();  // Initialize the UI components
     }
 
-
     private void initialize() {
-        setTitle("Word Ladder Game");  // Set window title
-        setSize(400, 400);  // Set window size
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  // Close the app when the window is closed
-        setLayout(new BorderLayout());  // Use BorderLayout for the main window layout
+        setTitle("Word Ladder Game");
+        setSize(400, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
 
         JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));  // Stack components vertically
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
         // Initialize enteredWordsPanel, startWordPanel, and targetWordPanel
         enteredWordsPanel = new JPanel();
         enteredWordsPanel.setLayout(new BoxLayout(enteredWordsPanel, BoxLayout.Y_AXIS));
-        enteredWordsPanel.setOpaque(false);  // Make the entered words panel non-opaque
+        enteredWordsPanel.setOpaque(false);
 
         startWordPanel = createWordPanel(controller.getModel().getStartWord(), "start");
         targetWordPanel = createWordPanel(controller.getModel().getTargetWord(), "target");
@@ -57,176 +61,207 @@ public class WeaverGameView extends JFrame {
         panel.add(targetWordPanel);
 
         JLabel inputLabel = new JLabel("Enter Word: ");
-        inputField = new JTextField(10);  // Input field for the user to type a word
-        submitButton = new JButton("Submit");  // Submit button to process the input word
+        inputField = new JTextField(10);
+        submitButton = new JButton("Submit");
         panel.add(inputLabel);
         panel.add(inputField);
         panel.add(submitButton);
 
-        feedbackArea = new JTextArea(3, 30);  // Area to show feedback after each submission
-        feedbackArea.setEditable(false);  // Make feedback area read-only
-        JScrollPane feedbackScrollPane = new JScrollPane(feedbackArea);  // Add scrolling functionality
+        feedbackArea = new JTextArea(3, 30);
+        feedbackArea.setEditable(false);
+        JScrollPane feedbackScrollPane = new JScrollPane(feedbackArea);
         panel.add(feedbackScrollPane);
 
-        enteredWordsArea = new JTextArea(5, 30);  // Area to show entered words
-        enteredWordsArea.setEditable(false);  // Make entered words area read-only
-        JScrollPane enteredWordsScrollPane = new JScrollPane(enteredWordsArea);
-        panel.add(enteredWordsScrollPane);
 
-        resetButton = new JButton("Reset");  // Button to reset the game
-        newGameButton = new JButton("New Game");  // Button to start a new game
+
+        resetButton = new JButton("Reset");
+        newGameButton = new JButton("New Game");
         panel.add(resetButton);
         panel.add(newGameButton);
 
-        add(panel, BorderLayout.CENTER);  // Add the main panel to the center of the window
+        // Virtual Keyboard Panel
+        virtualKeyboardPanel = createVirtualKeyboardPanel();  // Create the virtual keyboard
+        panel.add(virtualKeyboardPanel);
 
-        // Action listener for the submit button
-        submitButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String word = inputField.getText().toUpperCase().trim();  // Get the input word
-                controller.processInput(word);  // Process the input and get feedback
-                String feedback = controller.getModel().getFeedback(word);  // Get feedback for this word
-                feedbackArea.setText(feedback);  // Display feedback in the feedback area
+        add(panel, BorderLayout.CENTER);
+inputField.setDocument(new PlainDocument() {
+    @Override
+    public void insertString(int offs, String str, AttributeSet a) 
+        throws BadLocationException {
+        if ((getLength() + str.length()) <= 4) {
+            super.insertString(offs, str.toUpperCase(), a);
+        }
+    }
+});
 
-                if (!word.isEmpty()) {
-                    enteredWords.add(word);  // Store the entered word
-                    enteredWordsArea.setText(String.join("\n", enteredWords));  // Display entered words
-                    updateEnteredWordsPanel(word, feedback);  // Update entered words with feedback
-                }
-
-                inputField.setText("");  // Clear input field for the next word
-                if (controller.getModel().isValidWord(word)) {
-                    isValidInputMade = true;
-                    enableResetButton(true);  // Enable the reset button
-                }
+        submitButton.addActionListener(e -> {
+            String word = inputField.getText().toUpperCase().trim();
+            String response = controller.processInput(word);  // 获取控制器返回的完整响应
+            
+            // 更新反馈显示逻辑
+            feedbackArea.setText(response);
+            
+            // 仅在有效输入时记录历史
+            if (controller.getModel().isValidWord(word)) {
+                enteredWords.add(word);
+                enteredWordsArea.setText(String.join("\n", enteredWords));
+                updateEnteredWordsPanel(word, controller.getModel().getFeedback(word));
+                isValidInputMade = true;
+                enableResetButton(true);
             }
+            
+            inputField.setText("");
         });
-
         // Action listener for the reset button
-        resetButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Clear the entered words and reset the cells
-                enteredWords.clear();
-        enteredWordsArea.setText("");  // Clear the entered words text area
-        enteredWordsPanel.removeAll();  // Remove all entered words cells
-        enteredWordsPanel.revalidate();  // Revalidate to update the layout
-        enteredWordsPanel.repaint();  // Repaint to refresh the display
-
-        // Reset feedback and input field
-        feedbackArea.setText("");  // Clear the feedback area
-        inputField.setText("");  // Clear the input field
-
-        // Reset the start and target words panels to their initial state
-        updateWordsDisplay(controller.getModel().getStartWord(), controller.getModel().getTargetWord());
-
-        resetButton.setEnabled(false);
-            }
+        resetButton.addActionListener(e -> {
+            enteredWords.clear();
+            enteredWordsArea.setText("");
+            enteredWordsPanel.removeAll();
+            enteredWordsPanel.revalidate();
+            enteredWordsPanel.repaint();
+            feedbackArea.setText("");
+            inputField.setText("");
+            updateWordsDisplay(controller.getModel().getStartWord(), controller.getModel().getTargetWord());
+            resetButton.setEnabled(false);
         });
 
         // Action listener for the new game button
-        newGameButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                controller.startNewGame();  // Start a new game
-                updateWordsDisplay(controller.getModel().getStartWord(),
-                                    controller.getModel().getTargetWord());  // Update start/target words
-        
-                // Clear the entered words but keep the start/target word panels intact
-                enteredWords.clear();
-                enteredWordsArea.setText("");  // Clear the entered words text area
-                enteredWordsPanel.removeAll();  // Clear the entered words panel
-                enteredWordsPanel.revalidate();  // Revalidate to update the layout
-                enteredWordsPanel.repaint();  // Repaint to refresh the display
-        
-                feedbackArea.setText("New game started!");  // Set feedback message
-                inputField.setText("");  // Clear the input field
-            }
+        newGameButton.addActionListener(e -> {
+            controller.startNewGame();
+            updateWordsDisplay(controller.getModel().getStartWord(),
+                                controller.getModel().getTargetWord());
+            enteredWords.clear();
+            enteredWordsArea.setText("");
+            enteredWordsPanel.removeAll();
+            enteredWordsPanel.revalidate();
+            enteredWordsPanel.repaint();
+            feedbackArea.setText("New game started!");
+            inputField.setText("");
         });
+        
 
-        setVisible(true);  // Make the window visible
+        setVisible(true);
     }
 
-    /**
-     * Enables or disables the reset button.
-     * @param enabled true to enable the button, false to disable it
-     */
     public void enableResetButton(boolean enabled) {
-        resetButton.setEnabled(enabled);  // Enable or disable the reset button
+        resetButton.setEnabled(enabled);
     }
 
-    /**
-     * Updates the start and target word panels to display the current start and target words.
-     * @param startWord the start word to display
-     * @param targetWord the target word to display
-     */
     private void updateWordsDisplay(String startWord, String targetWord) {
         startWordPanel.removeAll();
         targetWordPanel.removeAll();
-        
-        // Add the letters of the start word as cells
+
         Arrays.stream(startWord.split(""))
-              .forEach(c -> startWordPanel.add(new Cell(c, "X")));  // 'X' is the initial status
-    
-        // Add the letters of the target word as cells
+              .forEach(c -> startWordPanel.add(new Cell(c, "X")));
+
         Arrays.stream(targetWord.split(""))
-              .forEach(c -> targetWordPanel.add(new Cell(c, "X")));  // 'X' is the initial status
-    
-        // Revalidate and repaint the panels to update the UI
+              .forEach(c -> targetWordPanel.add(new Cell(c, "X")));
+
         startWordPanel.revalidate();
         targetWordPanel.revalidate();
     }
-    
 
-    /**
-     * Creates a panel displaying each letter of the word with its status.
-     * @param word the word to display
-     * @param type the type of word ("start" or "target")
-     * @return the panel displaying the word
-     */
-   
-     private JPanel createWordPanel(String word, String type) {
+    private JPanel createWordPanel(String word, String type) {
         JPanel wordPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
-        wordPanel.setLayout(new BoxLayout(wordPanel, BoxLayout.X_AXIS)); 
+        wordPanel.setLayout(new BoxLayout(wordPanel, BoxLayout.X_AXIS));
         wordPanel.setOpaque(false);
-        
+
         for (int i = 0; i < word.length(); i++) {
             String letter = String.valueOf(word.charAt(i));
-            String status = type.equals("start") ? "X" : "X"; // 初始状态设为灰色
+            String status = type.equals("start") ? "X" : "X";
             Cell cell = new Cell(letter, status);
             wordPanel.add(cell);
         }
         return wordPanel;
     }
 
-    /**
-     * Updates the entered words panel by adding a new word with feedback.
-     * @param word the word to display
-     * @param feedback the feedback for the word (e.g., "G", "Y", "X")
-     */
-    private void updateEnteredWordsPanel(String word, String feedback) {
-        JPanel wordPanel = new JPanel();
-        wordPanel.setLayout(new BoxLayout(wordPanel, BoxLayout.X_AXIS));  // Use BoxLayout for horizontal arrangement
-        wordPanel.setOpaque(false);  //
-
-        // Create a cell for each letter of the word with corresponding feedback
-        for (int i = 0; i < word.length(); i++) {
-            String letter = String.valueOf(word.charAt(i));
-            String feedbackStatus = String.valueOf(feedback.charAt(i));  // Get the feedback for the letter
-            Cell cell = new Cell(letter, "X");  // Create a new cell for the letter
-            cell.setStatus(feedbackStatus);  // Set the feedback status
-            wordPanel.add(cell);  // Add the cell to the panel
+    private JPanel createVirtualKeyboardPanel() {
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        
+        addKeyRow(mainPanel, "QWERTYUIOP");
+        addKeyRow(mainPanel, "ASDFGHJKL");
+        addKeyRow(mainPanel, "ZXCVBNM");
+        
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
+        controlPanel.add(createControlButton("ENTER"));
+        controlPanel.add(createControlButton("DELETE"));
+        
+        mainPanel.add(controlPanel);
+        return mainPanel;
+    }
+    
+    private void addKeyRow(JPanel parent, String keys) {
+        JPanel rowPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+        for (char key : keys.toCharArray()) {
+            rowPanel.add(createLetterButton(String.valueOf(key)));
         }
-
-        enteredWordsPanel.add(wordPanel);  // Add the word panel to the entered words panel
-        enteredWordsPanel.revalidate();  // Revalidate to update the layout
-        enteredWordsPanel.repaint();  // Repaint to refresh the display
+        parent.add(rowPanel);
+    }
+    
+    private JButton createLetterButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setBackground(Color.DARK_GRAY);
+        btn.setForeground(Color.WHITE);
+        btn.addActionListener(createKeyActionListener(text));
+        return btn;
+    }
+    
+    private JButton createControlButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setBackground(Color.DARK_GRAY);
+        btn.setForeground(Color.WHITE);
+        btn.setPreferredSize(new Dimension(100, 30));
+        btn.addActionListener(createKeyActionListener(text));
+        return btn;
     }
 
-    /**
-     * Cell class to display each letter of the word with its feedback status.
-     */
+
+  
+
+    private ActionListener createKeyActionListener(String key) {
+        return e -> {
+            if (key.equals("ENTER")) {
+                String word = inputField.getText().toUpperCase().trim();
+                controller.processInput(word);
+                String feedback = controller.getModel().getFeedback(word);
+                feedbackArea.setText(feedback);
+                if (!word.isEmpty()) {
+                    enteredWords.add(word);
+                    enteredWordsArea.setText(String.join("\n", enteredWords));
+                    updateEnteredWordsPanel(word, feedback);
+                }
+                inputField.setText("");
+            } else if (key.equals("DELETE")) {
+                String text = inputField.getText();
+                if (!text.isEmpty()) {
+                    inputField.setText(text.substring(0, text.length() - 1));  // Remove last character
+                }
+            } else {
+                String currentText = inputField.getText();
+                inputField.setText(currentText + key);  // Append the letter to the input field
+            }
+        };
+    }
+
+    private void updateEnteredWordsPanel(String word, String feedback) {
+        JPanel wordPanel = new JPanel();
+        wordPanel.setLayout(new BoxLayout(wordPanel, BoxLayout.X_AXIS));
+        wordPanel.setOpaque(false);
+
+        for (int i = 0; i < word.length(); i++) {
+            String letter = String.valueOf(word.charAt(i));
+            String feedbackStatus = String.valueOf(feedback.charAt(i));
+            Cell cell = new Cell(letter, "X");
+            cell.setStatus(feedbackStatus);
+            wordPanel.add(cell);
+        }
+
+        enteredWordsPanel.add(wordPanel);
+        enteredWordsPanel.revalidate();
+        enteredWordsPanel.repaint();
+    }
+
     private class Cell extends JPanel {
         private String value;
         private String status;
@@ -234,51 +269,44 @@ public class WeaverGameView extends JFrame {
         public Cell(String value, String status) {
             this.value = value;
             this.status = status;
-            setPreferredSize(new Dimension(40, 40));  // Set the size of the cell
-            setOpaque(true);  // Enable opacity for the cell
-            setBackground(getColorForStatus(status));  // Set the background color based on status
+            setPreferredSize(new Dimension(40, 40));
+            setOpaque(true);
+            setBackground(getColorForStatus(status));
             setLayout(new BorderLayout());
-            add(new JLabel(value, SwingConstants.CENTER));  // Add the letter to the center of the cell
+            add(new JLabel(value, SwingConstants.CENTER));
         }
 
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             g.setColor(getBackground());
-            g.fillRect(0, 0, getWidth(), getHeight());  // Fill the cell with the background color
+            g.fillRect(0, 0, getWidth(), getHeight());
         }
 
-        /**
-         * Returns the color for a given status.
-         * @param status the feedback status ("G", "Y", or "X")
-         * @return the color corresponding to the status
-         */
         private Color getColorForStatus(String status) {
             switch (status) {
-                case "G":  // Green for correct
+                case "G":
                     return Color.GREEN;
-                case "Y":  // Yellow for present but incorrect
+                case "Y":
                     return Color.YELLOW;
-                case "X":  // Gray for absent
+                case "X":
                     return Color.GRAY;
                 default:
-                    return Color.WHITE;  // Default to white if no status is specified
+                    return Color.WHITE;
             }
         }
 
         public void setStatus(String status) {
             this.status = status;
-            setBackground(getColorForStatus(status));  // Update the cell color based on new status
-            repaint();  // Repaint to update the display
+            setBackground(getColorForStatus(status));
+            repaint();
         }
 
         public void setValue(String value) {
             this.value = value;
-            repaint();  // Repaint to update the letter in the cell
+            repaint();
         }
     }
-
-    
 }
 
 
