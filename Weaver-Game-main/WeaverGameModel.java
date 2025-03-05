@@ -20,12 +20,12 @@ public class WeaverGameModel extends Observable {
     }
 
     // 从文件中加载字典
-    private List<String> loadDictionary(String filename) {
+    public static List<String> loadDictionary(String filename) {
         List<String> words = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                line = line.trim().toUpperCase();  // 转为大写，确保一致性
+                line = line.trim().toUpperCase();
                 if (line.length() == 4) {  // 只加载四个字母的单词
                     words.add(line);
                 }
@@ -44,7 +44,17 @@ public class WeaverGameModel extends Observable {
     public String getTargetWord() {
         return targetWord;
     }
+    public void setStartWord(String startWord) {
+        this.startWord = startWord;
+        setChanged();
+        notifyObservers();  // Notify the observers (view) that the start word has been updated
+    }
 
+    public void setTargetWord(String targetWord) {
+        this.targetWord = targetWord;
+        setChanged();
+        notifyObservers();  // Notify the observers (view) that the target word has been updated
+    }
     // Validate if a word is a valid intermediate word
     public boolean isValidWord(String word) {
         return word != null 
@@ -69,13 +79,14 @@ public class WeaverGameModel extends Observable {
         return diffCount == 1;
     }
     public void resetGame(List<String> validWords) {
+        if (!randomWordsFlag) {//可删除
+            return;//可删除
+        }//可删除
         Random rand = new Random();
         do {
             this.startWord = validWords.get(rand.nextInt(validWords.size()));
             this.targetWord = validWords.get(rand.nextInt(validWords.size()));
-        } while (startWord.equals(targetWord)); // 确保起始词不等于目标词
-        
-
+        } while (startWord.equals(targetWord) || !isValidWord(startWord) || !isValidWord(targetWord)); // 确保起始词不等于目标词且都在字典中
     }
         // Get feedback on the current word (green or gray)
     public String getFeedback(String word) {
@@ -90,6 +101,35 @@ public class WeaverGameModel extends Observable {
             }
         }
         return feedback.toString();
+    }
+
+    public List<String> findPath() {
+        if (startWord.equals(targetWord)) {
+            return Collections.singletonList(startWord);  // No path needed if words are the same
+        }
+
+        Queue<List<String>> queue = new LinkedList<>();
+        Set<String> visited = new HashSet<>();
+        visited.add(startWord);
+        queue.add(Arrays.asList(startWord));
+
+        while (!queue.isEmpty()) {
+            List<String> path = queue.poll();
+            String lastWord = path.get(path.size() - 1);
+
+            for (String neighbor : validWords) {
+                if (!visited.contains(neighbor) && isValidTransition(lastWord, neighbor)) {
+                    List<String> newPath = new ArrayList<>(path);
+                    newPath.add(neighbor);
+                    if (neighbor.equals(targetWord)) {
+                        return newPath;
+                    }
+                    queue.add(newPath);
+                    visited.add(neighbor);
+                }
+            }
+        }
+        return Collections.emptyList();  // No path found
     }
 
     // Setters for flags (for runtime changes)
@@ -118,7 +158,6 @@ public class WeaverGameModel extends Observable {
     }
 
     public List<String> getValidWords() {
-        // 假设 validWords 是从文件或数据库加载的有效词汇列表
         return validWords;  // 返回有效的词汇列表
     }
 }

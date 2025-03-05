@@ -1,5 +1,6 @@
 import java.awt.event.*;
 import java.util.List;
+import java.util.Random;
 
 public class WeaverGameController {
     private WeaverGameModel model;
@@ -13,35 +14,54 @@ public class WeaverGameController {
         if (word == null || word.trim().isEmpty()) {
             return "Empty input!";
         }
-        
+
         String processedWord = word.toUpperCase().trim();
         if (processedWord.length() != 4) {
             return "Invalid word! Must be 4 letters.";
         }
-        
+
         if (!model.isValidWord(processedWord)) {
-            return "Invalid word! Not in dictionary.";
+            return model.getErrorFlag() ? "Invalid word! Not in dictionary." : "";
         }
-        
-        // 后续成功处理逻辑（反馈生成、路径检查等）
-        String feedback = model.getFeedback(processedWord);
-        if (model.isTargetWord(processedWord)) {
+
+        return generateFeedback(processedWord);
+    }
+
+    // Generate feedback after processing the word
+    private String generateFeedback(String word) {
+        String feedback = model.getFeedback(word);
+        if (model.isTargetWord(word)) {
             return "Success! Target reached: " + feedback;
         }
         return "Valid transition. Feedback: " + feedback;
     }
-    public void startNewGame() {
-    List<String> dictionary = model.getValidWords();
-    model.resetGame(dictionary);
-}
+
+    public void startNewGame(List<String> validWords) {
+        String startWord = getRandomWord(validWords);
+        String targetWord = getRandomWord(validWords);
+        model.setStartWord(startWord);
+        model.setTargetWord(targetWord);
+    }
+
+    private String getRandomWord(List<String> validWords) {
+        Random rand = new Random();
+        return validWords.get(rand.nextInt(validWords.size()));
+    }
+
     public WeaverGameModel getModel() {
         return this.model;
     }
+
     // Optionally, show path from start to target
     public String showPath() {
         if (model.getShowPathFlag()) {
-            return "Path is displayed!";
+            List<String> path = model.findPath();
+            if (path.isEmpty()) {
+                return "No path found!";
+            }
+            return "Path: " + String.join(" -> ", path);
         }
         return "Path not enabled.";
     }
 }
+

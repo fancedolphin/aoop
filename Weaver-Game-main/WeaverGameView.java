@@ -72,7 +72,10 @@ public class WeaverGameView extends JFrame {
         JScrollPane feedbackScrollPane = new JScrollPane(feedbackArea);
         panel.add(feedbackScrollPane);
 
-
+        enteredWordsArea = new JTextArea(5, 30);  // Area to show entered words
+        enteredWordsArea.setEditable(false);  // Make entered words area read-only
+        JScrollPane enteredWordsScrollPane = new JScrollPane(enteredWordsArea);
+        panel.add(enteredWordsScrollPane);
 
         resetButton = new JButton("Reset");
         newGameButton = new JButton("New Game");
@@ -127,7 +130,7 @@ inputField.setDocument(new PlainDocument() {
 
         // Action listener for the new game button
         newGameButton.addActionListener(e -> {
-            controller.startNewGame();
+            controller.startNewGame(controller.getModel().getValidWords());
             updateWordsDisplay(controller.getModel().getStartWord(),
                                 controller.getModel().getTargetWord());
             enteredWords.clear();
